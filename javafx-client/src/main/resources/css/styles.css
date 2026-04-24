@@ -1,0 +1,113 @@
+/* Library Management System - JavaFX Stylesheet */
+
+/* Root Styles */
+.root {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 12;
+    -fx-base: #f5f5f5;
+    -fx-primary: #2e5090;
+    -fx-accent: #17a2b8;
+}
+
+/* Buttons */
+.button {
+    -fx-font-size: 12;
+    -fx-padding: 8 16 8 16;
+    -fx-text-fill: white;
+    -fx-background-color: #2e5090;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.button:hover {
+    -fx-background-color: #1e3d6f;
+}
+
+.button:pressed {
+    -fx-background-color: #143357;
+}
+
+.button:disabled {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #666666;
+}
+
+/* Text Fields */
+.text-field,
+.password-field {
+    -fx-font-size: 12;
+    -fx-padding: 8;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 4;
+    -fx-border-width: 1;
+}
+
+.text-field:focused,
+.password-field:focused {
+    -fx-border-color: #17a2b8;
+    -fx-border-width: 2;
+}
+
+/* Labels */
+.label {
+    -fx-text-fill: #333333;
+}
+
+/* Table View */
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+}
+
+.table-view .column-header {
+    -fx-background-color: #f0f0f0;
+    -fx-padding: 10;
+    -fx-font-weight: bold;
+}
+
+.table-view .table-row-cell {
+    -fx-padding: 5;
+    -fx-border-color: #f0f0f0;
+}
+
+.table-view .table-row-cell:odd {
+    -fx-background-color: #fafafa;
+}
+
+.table-view .table-row-cell:even {
+    -fx-background-color: white;
+}
+
+.table-view .table-row-cell:selected {
+    -fx-background-color: #17a2b8;
+    -fx-text-fill: white;
+}
+
+/* ComboBox */
+.combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #cccccc;
+    -fx-border-radius: 4;
+    -fx-padding: 8;
+}
+
+.combo-box:focused {
+    -fx-border-color: #17a2b8;
+    -fx-border-width: 2;
+}
+
+/* VBox and HBox */
+.vbox,
+.hbox {
+    -fx-spacing: 10;
+}
+
+/* Accent color for highlights */
+.accent {
+    -fx-text-fill: #17a2b8;
+}
+
+/* Borders and Separators */
+.separator {
+    -fx-padding: 0 0 5 0;
+}
