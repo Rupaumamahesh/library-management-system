@@ -2,8 +2,8 @@ package com.library.controller;
 
 import com.library.dto.BookDTO;
 import com.library.service.BookService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,19 +17,27 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/books")
-@RequiredArgsConstructor
-@Slf4j
 public class BookController {
+
+    // 1. Manual Logger (Fixes "cannot find symbol log")
+    private static final Logger log = LoggerFactory.getLogger(BookController.class);
 
     private final BookService bookService;
 
+    // 2. Manual Constructor (Fixes "variable not initialized" error)
+    public BookController(BookService bookService) {
+        this.bookService = bookService;
+    }
+
     @GetMapping
     public ResponseEntity<List<BookDTO>> getAllBooks() {
+        log.info("Fetching all books");
         return ResponseEntity.ok(bookService.getAllBooks());
     }
 
     @PostMapping
     public ResponseEntity<BookDTO> addBook(@Valid @RequestBody BookDTO bookDTO) {
+        log.info("Adding new book: {}", bookDTO.getTitle());
         return ResponseEntity.status(HttpStatus.CREATED).body(bookService.addBook(bookDTO));
     }
 
@@ -45,11 +53,13 @@ public class BookController {
 
     @PutMapping("/{id}")
     public ResponseEntity<BookDTO> updateBook(@PathVariable Long id, @Valid @RequestBody BookDTO bookDTO) {
+        log.info("Updating book with id: {}", id);
         return ResponseEntity.ok(bookService.updateBook(id, bookDTO));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
+        log.info("Deleting book with id: {}", id);
         bookService.deleteBook(id);
         return ResponseEntity.noContent().build();
     }
