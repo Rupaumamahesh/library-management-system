@@ -1,11 +1,21 @@
 package com.library.client.controller;
 
+import java.io.IOException;
+import java.net.URL;
+import java.util.List;
+import java.util.ResourceBundle;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.library.client.MainApp;
 import com.library.client.api.ApiClient;
 import com.library.client.model.Transaction;
+
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
@@ -15,60 +25,23 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.List;
-import java.util.ResourceBundle;
-
-/**
- * Controller for the transactions screen.
- * Allows borrowing and returning books.
- * Displays transaction history with filtering.
- */
 public class TransactionController implements Initializable {
     private static final Logger logger = LoggerFactory.getLogger(TransactionController.class);
 
-    @FXML
-    private TextField memberIdField;
-
-    @FXML
-    private TextField bookIdField;
-
-    @FXML
-    private Button borrowButton;
-
-    @FXML
-    private TableView<Transaction> historyTable;
-
-    @FXML
-    private TableColumn<Transaction, String> recordIdColumn;
-
-    @FXML
-    private TableColumn<Transaction, String> bookIdColumn;
-
-    @FXML
-    private TableColumn<Transaction, String> memberIdColumn;
-
-    @FXML
-    private TableColumn<Transaction, String> borrowDateColumn;
-
-    @FXML
-    private TableColumn<Transaction, String> returnDateColumn;
-
-    @FXML
-    private TableColumn<Transaction, String> statusColumn;
-
-    @FXML
-    private ComboBox<String> statusFilterCombo;
-
-    @FXML
-    private Button returnButton;
-
-    @FXML
-    private Button backButton;
+    @FXML private TextField memberIdField;
+    @FXML private TextField bookIdField;
+    @FXML private Button borrowButton;
+    @FXML private TableView<Transaction> historyTable;
+    @FXML private TableColumn<Transaction, String> recordIdColumn;
+    @FXML private TableColumn<Transaction, String> bookIdColumn;
+    @FXML private TableColumn<Transaction, String> memberIdColumn;
+    @FXML private TableColumn<Transaction, String> borrowDateColumn;
+    @FXML private TableColumn<Transaction, String> returnDateColumn;
+    @FXML private TableColumn<Transaction, String> statusColumn;
+    @FXML private ComboBox<String> statusFilterCombo;
+    @FXML private Button returnButton;
+    @FXML private Button backButton;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -89,18 +62,22 @@ public class TransactionController implements Initializable {
     }
 
     private void loadTransactions() {
-        ApiClient.getInstance().getTransactions()
-                .setOnSucceeded(event -> {
-                    List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
-                    ObservableList<Transaction> items = FXCollections.observableArrayList(transactions);
-                    Platform.runLater(() -> historyTable.setItems(items));
-                    logger.info("Loaded {} transactions", transactions.size());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to load transactions", event.getSource().getException());
-                    showAlert("Error", "Failed to load transactions", Alert.AlertType.ERROR);
-                });
-        new Thread(ApiClient.getInstance().getTransactions()).start();
+        // ✅ FIX: save task to variable, attach listeners, start SAME instance
+        Task<List<Transaction>> task = ApiClient.getInstance().getTransactions();
+
+        task.setOnSucceeded(event -> {
+            List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
+            ObservableList<Transaction> items = FXCollections.observableArrayList(transactions);
+            Platform.runLater(() -> historyTable.setItems(items));
+            logger.info("Loaded {} transactions", transactions.size());
+        });
+
+        task.setOnFailed(event -> {
+            logger.error("Failed to load transactions", event.getSource().getException());
+            showAlert("Error", "Failed to load transactions", Alert.AlertType.ERROR);
+        });
+
+        new Thread(task).start();
     }
 
     @FXML
@@ -115,26 +92,30 @@ public class TransactionController implements Initializable {
 
         borrowButton.setDisable(true);
 
-        ApiClient.getInstance().borrowBook(memberId, bookId)
-                .setOnSucceeded(event -> {
-                    Transaction transaction = (Transaction) event.getSource().getValue();
-                    Platform.runLater(() -> {
-                        showAlert("Success", "Book borrowed successfully", Alert.AlertType.INFORMATION);
-                        memberIdField.clear();
-                        bookIdField.clear();
-                        loadTransactions();
-                        borrowButton.setDisable(false);
-                    });
-                    logger.info("Book borrowed: {}", transaction.getRecordId());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to borrow book", event.getSource().getException());
-                    Platform.runLater(() -> {
-                        showAlert("Error", "Failed to borrow book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
-                        borrowButton.setDisable(false);
-                    });
-                });
-        new Thread(ApiClient.getInstance().borrowBook(memberId, bookId)).start();
+        // ✅ FIX: save task to variable, attach listeners, start SAME instance
+        Task<Transaction> task = ApiClient.getInstance().borrowBook(memberId, bookId);
+
+        task.setOnSucceeded(event -> {
+            Transaction transaction = (Transaction) event.getSource().getValue();
+            Platform.runLater(() -> {
+                showAlert("Success", "Book borrowed successfully", Alert.AlertType.INFORMATION);
+                memberIdField.clear();
+                bookIdField.clear();
+                loadTransactions();
+                borrowButton.setDisable(false);
+            });
+            logger.info("Book borrowed: {}", transaction.getRecordId());
+        });
+
+        task.setOnFailed(event -> {
+            logger.error("Failed to borrow book", event.getSource().getException());
+            Platform.runLater(() -> {
+                showAlert("Error", "Failed to borrow book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+                borrowButton.setDisable(false);
+            });
+        });
+
+        new Thread(task).start();
     }
 
     @FXML
@@ -152,28 +133,31 @@ public class TransactionController implements Initializable {
 
         returnButton.setDisable(true);
 
-        ApiClient.getInstance().returnBook(selected.getId())
-                .setOnSucceeded(event -> {
-                    Platform.runLater(() -> {
-                        showAlert("Success", "Book returned successfully", Alert.AlertType.INFORMATION);
-                        loadTransactions();
-                        returnButton.setDisable(false);
-                    });
-                    logger.info("Book returned: {}", selected.getRecordId());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to return book", event.getSource().getException());
-                    Platform.runLater(() -> {
-                        showAlert("Error", "Failed to return book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
-                        returnButton.setDisable(false);
-                    });
-                });
-        new Thread(ApiClient.getInstance().returnBook(selected.getId())).start();
+        // ✅ FIX: save task to variable, attach listeners, start SAME instance
+        Task<Transaction> task = ApiClient.getInstance().returnBook(selected.getId());
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                showAlert("Success", "Book returned successfully", Alert.AlertType.INFORMATION);
+                loadTransactions();
+                returnButton.setDisable(false);
+            });
+            logger.info("Book returned: {}", selected.getRecordId());
+        });
+
+        task.setOnFailed(event -> {
+            logger.error("Failed to return book", event.getSource().getException());
+            Platform.runLater(() -> {
+                showAlert("Error", "Failed to return book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+                returnButton.setDisable(false);
+            });
+        });
+
+        new Thread(task).start();
     }
 
     @FXML
     private void handleFilterChange() {
-        // Filter logic can be added here
         logger.debug("Filter changed to: {}", statusFilterCombo.getValue());
     }
 
