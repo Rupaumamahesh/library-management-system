@@ -8,17 +8,25 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
 import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 /**
@@ -91,7 +99,78 @@ public class MemberController implements Initializable {
 
     @FXML
     private void handleRegister() {
-        showAlert("Register Member", "Register member feature not yet implemented", Alert.AlertType.INFORMATION);
+        Dialog<Member> dialog = new Dialog<>();
+        dialog.setTitle("Register New Member");
+        dialog.setHeaderText("Enter member details");
+
+        ButtonType registerButtonType = new ButtonType("Register", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(registerButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField memberIdField = new TextField();
+        memberIdField.setPromptText("e.g. M001");
+        TextField nameField = new TextField();
+        nameField.setPromptText("Full name");
+        TextField emailField = new TextField();
+        emailField.setPromptText("email@example.com");
+        TextField phoneField = new TextField();
+        phoneField.setPromptText("Phone (optional)");
+
+        grid.add(new Label("Member ID:"), 0, 0);
+        grid.add(memberIdField, 1, 0);
+        grid.add(new Label("Name:"), 0, 1);
+        grid.add(nameField, 1, 1);
+        grid.add(new Label("Email:"), 0, 2);
+        grid.add(emailField, 1, 2);
+        grid.add(new Label("Phone:"), 0, 3);
+        grid.add(phoneField, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        javafx.scene.Node registerBtn = dialog.getDialogPane().lookupButton(registerButtonType);
+        registerBtn.setDisable(true);
+        memberIdField.textProperty().addListener((obs, old, val) ->
+                registerBtn.setDisable(val.trim().isEmpty() || nameField.getText().trim().isEmpty() || emailField.getText().trim().isEmpty()));
+        nameField.textProperty().addListener((obs, old, val) ->
+                registerBtn.setDisable(val.trim().isEmpty() || memberIdField.getText().trim().isEmpty() || emailField.getText().trim().isEmpty()));
+        emailField.textProperty().addListener((obs, old, val) ->
+                registerBtn.setDisable(val.trim().isEmpty() || memberIdField.getText().trim().isEmpty() || nameField.getText().trim().isEmpty()));
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == registerButtonType) {
+                Member member = new Member();
+                member.setMemberId(memberIdField.getText().trim());
+                member.setName(nameField.getText().trim());
+                member.setEmail(emailField.getText().trim());
+                member.setPhone(phoneField.getText().trim());
+                return member;
+            }
+            return null;
+        });
+
+        Optional<Member> result = dialog.showAndWait();
+        result.ifPresent(member -> {
+            var task = ApiClient.getInstance().addMember(member);
+            task.setOnSucceeded(event -> {
+                Member created = (Member) event.getSource().getValue();
+                Platform.runLater(() -> {
+                    membersTable.getItems().add(created);
+                    showAlert("Success", "Member \"" + created.getName() + "\" registered!", Alert.AlertType.INFORMATION);
+                });
+                logger.info("Member registered: {}", created.getMemberId());
+            });
+            task.setOnFailed(event -> {
+                logger.error("Failed to register member", event.getSource().getException());
+                Platform.runLater(() -> showAlert("Error",
+                        "Failed to register member: " + event.getSource().getException().getMessage(),
+                        Alert.AlertType.ERROR));
+            });
+            new Thread(task).start();
+        });
     }
 
     @FXML
