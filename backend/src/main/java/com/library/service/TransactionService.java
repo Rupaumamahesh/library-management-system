@@ -118,7 +118,34 @@ public class TransactionService {
     }
 
     /**
-     * Gets all transactions.
+     * Returns a borrowed book by transaction ID.
+     * Used by the REST endpoint POST /return/{transactionId}.
+     */
+    @Transactional
+    public TransactionDTO returnByTransactionId(Long transactionId) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found: " + transactionId));
+
+        if (transaction.getStatus() == Transaction.Status.RETURNED) {
+            throw new BorrowLimitException("Book already returned for transaction: " + transactionId);
+        }
+
+        Book book = transaction.getBook();
+        Member member = transaction.getMember();
+
+        transaction.setReturnDate(LocalDate.now());
+        transaction.setStatus(Transaction.Status.RETURNED);
+
+        book.setAvailable(true);
+        member.setBorrowedCount(Math.max(0, member.getBorrowedCount() - 1));
+
+        Transaction saved = transactionRepository.save(transaction);
+        log.info("Book returned via transactionId: {}", transactionId);
+
+        return mapToDTO(saved);
+    }
+
+    /**
      */
     public List<TransactionDTO> getAllTransactions() {
         return transactionRepository.findAll().stream()
@@ -132,7 +159,7 @@ public class TransactionService {
     public List<TransactionDTO> getHistory(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException("Member not found: " + memberId));
-        
+
         return transactionRepository.findByMember(member).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
