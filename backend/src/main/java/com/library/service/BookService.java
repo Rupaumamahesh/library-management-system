@@ -6,6 +6,8 @@ import com.library.model.Book;
 import com.library.repository.BookRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,13 +50,8 @@ public class BookService {
         return mapToDTO(saved);
     }
 
-    /**
-     * Gets all books in the catalogue.
-     */
-    public List<BookDTO> getAllBooks() {
-        return bookRepository.findAll().stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+    public Page<BookDTO> getAllBooks(Pageable pageable) {
+        return bookRepository.findAll(pageable).map(this::mapToDTO);
     }
 
     /**

@@ -8,11 +8,11 @@ import com.library.repository.TransactionRepository;
 import com.library.model.Transaction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Service layer for member management.
@@ -55,13 +55,8 @@ public class MemberService {
         return mapToDTO(saved);
     }
 
-    /**
-     * Gets all members.
-     */
-    public List<MemberDTO> getAllMembers() {
-        return memberRepository.findAll().stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
+    public Page<MemberDTO> getAllMembers(Pageable pageable) {
+        return memberRepository.findAll(pageable).map(this::mapToDTO);
     }
 
     /**
