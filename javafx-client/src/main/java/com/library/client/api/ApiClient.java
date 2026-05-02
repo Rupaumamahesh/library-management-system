@@ -100,7 +100,8 @@ public class ApiClient {
 
                 if (response.statusCode() == 200) {
                     logger.debug("Fetched all books");
-                    return gson.fromJson(response.body(), new TypeToken<List<Book>>(){}.getType());
+                    JsonObject page = gson.fromJson(response.body(), JsonObject.class);
+                    return gson.fromJson(page.getAsJsonArray("content"), new TypeToken<List<Book>>(){}.getType());
                 } else {
                     throw new RuntimeException("Failed to fetch books: " + response.statusCode());
                 }
@@ -196,7 +197,8 @@ public class ApiClient {
 
                 if (response.statusCode() == 200) {
                     logger.debug("Fetched all members");
-                    return gson.fromJson(response.body(), new TypeToken<List<Member>>(){}.getType());
+                    JsonObject page = gson.fromJson(response.body(), JsonObject.class);
+                    return gson.fromJson(page.getAsJsonArray("content"), new TypeToken<List<Member>>(){}.getType());
                 } else {
                     throw new RuntimeException("Failed to fetch members: " + response.statusCode());
                 }

@@ -1,42 +1,208 @@
-package com.library.controller;
+package com.library.client.controller;
 
-import com.library.dto.BorrowRequest;
-import com.library.dto.TransactionDTO;
-import com.library.service.TransactionService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import com.library.client.MainApp;
+import com.library.client.api.ApiClient;
+import com.library.client.model.Transaction;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import jakarta.validation.Valid;
+import java.io.IOException;
+import java.net.URL;
 import java.util.List;
+import java.util.ResourceBundle;
+import java.util.stream.Collectors;
 
 /**
- * REST controller for transaction management (borrow/return).
- * Endpoint base: /api
+ * Controller for the transactions screen.
+ * Allows borrowing and returning books.
+ * Displays transaction history with filtering.
  */
-@RestController
-@RequestMapping("/api")
-@RequiredArgsConstructor
-@Slf4j
-public class TransactionController {
+public class TransactionController implements Initializable {
+    private static final Logger logger = LoggerFactory.getLogger(TransactionController.class);
 
-    private final TransactionService transactionService;
+    @FXML
+    private TextField memberIdField;
 
-    @PostMapping("/borrow")
-    public ResponseEntity<TransactionDTO> borrowBook(@Valid @RequestBody BorrowRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(transactionService.borrowBook(request.getMemberId(), request.getBookId()));
+    @FXML
+    private TextField bookIdField;
+
+    @FXML
+    private Button borrowButton;
+
+    @FXML
+    private TableView<Transaction> historyTable;
+
+    @FXML
+    private TableColumn<Transaction, String> recordIdColumn;
+
+    @FXML
+    private TableColumn<Transaction, String> bookIdColumn;
+
+    @FXML
+    private TableColumn<Transaction, String> memberIdColumn;
+
+    @FXML
+    private TableColumn<Transaction, String> borrowDateColumn;
+
+    @FXML
+    private TableColumn<Transaction, String> returnDateColumn;
+
+    @FXML
+    private TableColumn<Transaction, String> statusColumn;
+
+    @FXML
+    private ComboBox<String> statusFilterCombo;
+
+    @FXML
+    private Button returnButton;
+
+    @FXML
+    private Button backButton;
+
+    private ObservableList<Transaction> allTransactions = FXCollections.observableArrayList();
+
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        logger.debug("TransactionController initialized");
+        setupTableColumns();
+        statusFilterCombo.setItems(FXCollections.observableArrayList("All", "BORROWED", "RETURNED"));
+        statusFilterCombo.setValue("All");
+        loadTransactions();
     }
 
-    @PostMapping("/return/{transactionId}")
-    public ResponseEntity<TransactionDTO> returnBook(@PathVariable Long transactionId) {
-        return ResponseEntity.ok(transactionService.returnByTransactionId(transactionId));
+    private void setupTableColumns() {
+        recordIdColumn.setCellValueFactory(new PropertyValueFactory<>("recordId"));
+        bookIdColumn.setCellValueFactory(new PropertyValueFactory<>("bookId"));
+        memberIdColumn.setCellValueFactory(new PropertyValueFactory<>("memberId"));
+        borrowDateColumn.setCellValueFactory(new PropertyValueFactory<>("borrowDate"));
+        returnDateColumn.setCellValueFactory(new PropertyValueFactory<>("returnDate"));
+        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
     }
 
-    @GetMapping("/transactions")
-    public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
-        return ResponseEntity.ok(transactionService.getAllTransactions());
+    private void loadTransactions() {
+        var task = ApiClient.getInstance().getTransactions();
+        task.setOnSucceeded(event -> {
+            List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
+            Platform.runLater(() -> {
+                allTransactions.setAll(transactions);
+                applyFilter();
+            });
+            logger.info("Loaded {} transactions", transactions.size());
+        });
+        task.setOnFailed(event -> {
+            logger.error("Failed to load transactions", event.getSource().getException());
+            showAlert("Error", "Failed to load transactions", Alert.AlertType.ERROR);
+        });
+        new Thread(task).start();
+    }
+
+    private void applyFilter() {
+        String filter = statusFilterCombo.getValue();
+        if (filter == null || "All".equals(filter)) {
+            historyTable.setItems(allTransactions);
+        } else {
+            List<Transaction> filtered = allTransactions.stream()
+                    .filter(t -> filter.equals(t.getStatus()))
+                    .collect(Collectors.toList());
+            historyTable.setItems(FXCollections.observableArrayList(filtered));
+        }
+    }
+
+    @FXML
+    private void handleBorrow() {
+        String memberId = memberIdField.getText().trim();
+        String bookId = bookIdField.getText().trim();
+
+        if (memberId.isEmpty() || bookId.isEmpty()) {
+            showAlert("Error", "Please enter member ID and book ID", Alert.AlertType.WARNING);
+            return;
+        }
+
+        borrowButton.setDisable(true);
+
+        var borrowTask = ApiClient.getInstance().borrowBook(memberId, bookId);
+        borrowTask.setOnSucceeded(event -> {
+            Transaction transaction = (Transaction) event.getSource().getValue();
+            Platform.runLater(() -> {
+                showAlert("Success", "Book borrowed successfully", Alert.AlertType.INFORMATION);
+                memberIdField.clear();
+                bookIdField.clear();
+                loadTransactions();
+                borrowButton.setDisable(false);
+            });
+            logger.info("Book borrowed: {}", transaction.getRecordId());
+        });
+        borrowTask.setOnFailed(event -> {
+            logger.error("Failed to borrow book", event.getSource().getException());
+            Platform.runLater(() -> {
+                showAlert("Error", "Failed to borrow book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+                borrowButton.setDisable(false);
+            });
+        });
+        new Thread(borrowTask).start();
+    }
+
+    @FXML
+    private void handleReturn() {
+        Transaction selected = historyTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert("Error", "Please select a transaction to return", Alert.AlertType.WARNING);
+            return;
+        }
+
+        if (!"BORROWED".equals(selected.getStatus())) {
+            showAlert("Error", "Only BORROWED books can be returned", Alert.AlertType.WARNING);
+            return;
+        }
+
+        returnButton.setDisable(true);
+
+        var returnTask = ApiClient.getInstance().returnBook(selected.getId());
+        returnTask.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                showAlert("Success", "Book returned successfully", Alert.AlertType.INFORMATION);
+                loadTransactions();
+                returnButton.setDisable(false);
+            });
+            logger.info("Book returned: {}", selected.getRecordId());
+        });
+        returnTask.setOnFailed(event -> {
+            logger.error("Failed to return book", event.getSource().getException());
+            Platform.runLater(() -> {
+                showAlert("Error", "Failed to return book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+                returnButton.setDisable(false);
+            });
+        });
+        new Thread(returnTask).start();
+    }
+
+    @FXML
+    private void handleFilterChange() {
+        logger.debug("Filter changed to: {}", statusFilterCombo.getValue());
+        applyFilter();
+    }
+
+    @FXML
+    private void handleBack() throws IOException {
+        MainApp.switchScene("/fxml/dashboard.fxml");
+    }
+
+    private void showAlert(String title, String message, Alert.AlertType type) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }
