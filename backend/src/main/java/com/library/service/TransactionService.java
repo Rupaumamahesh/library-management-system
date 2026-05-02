@@ -157,10 +157,10 @@ public class TransactionService {
      * Gets borrow history for a member.
      */
     public List<TransactionDTO> getHistory(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new ResourceNotFoundException("Member not found: " + memberId));
-
-        return transactionRepository.findByMember(member).stream()
+        if (!memberRepository.existsById(memberId)) {
+            throw new ResourceNotFoundException("Member not found: " + memberId);
+        }
+        return transactionRepository.findByMemberId(memberId).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
@@ -183,14 +183,16 @@ public class TransactionService {
     }
 
     /**
-     * DTO mapper.
+     * DTO mapper — eagerly accesses relations inside transaction context.
      */
     private TransactionDTO mapToDTO(Transaction transaction) {
+        String bookId = transaction.getBook() != null ? transaction.getBook().getBookId() : "";
+        String memberId = transaction.getMember() != null ? transaction.getMember().getMemberId() : "";
         return new TransactionDTO(
                 transaction.getId(),
                 transaction.getRecordId(),
-                transaction.getBook().getBookId(),
-                transaction.getMember().getMemberId(),
+                bookId,
+                memberId,
                 transaction.getBorrowDate().toString(),
                 transaction.getReturnDate() != null ? transaction.getReturnDate().toString() : null,
                 transaction.getStatus().name()

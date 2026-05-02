@@ -1,7 +1,9 @@
 package com.library.controller;
 
 import com.library.dto.MemberDTO;
+import com.library.dto.TransactionDTO;
 import com.library.service.MemberService;
+import com.library.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ import java.util.List;
 public class MemberController {
 
     private final MemberService memberService;
+    private final TransactionService transactionService;
 
     @GetMapping
     public ResponseEntity<List<MemberDTO>> getAllMembers() {
@@ -50,8 +53,7 @@ public class MemberController {
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<List<?>> getMemberHistory(@PathVariable Long id) {
-        // Will be implemented after TransactionController is set up
-        return ResponseEntity.ok(List.of());
+    public ResponseEntity<List<TransactionDTO>> getMemberHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(transactionService.getHistory(id));
     }
 }

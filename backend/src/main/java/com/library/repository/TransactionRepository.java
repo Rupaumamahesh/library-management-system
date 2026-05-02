@@ -23,6 +23,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByMember(Member member);
 
     /**
+     * Find transactions by member ID directly.
+     */
+    @Query("SELECT t FROM Transaction t WHERE t.member.id = :memberId")
+    List<Transaction> findByMemberId(@Param("memberId") Long memberId);
+
+    /**
      * Find transactions by book.
      */
     List<Transaction> findByBook(Book book);

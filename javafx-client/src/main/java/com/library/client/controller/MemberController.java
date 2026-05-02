@@ -3,6 +3,7 @@ package com.library.client.controller;
 import com.library.client.MainApp;
 import com.library.client.api.ApiClient;
 import com.library.client.model.Member;
+import com.library.client.model.Transaction;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -20,6 +21,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -180,7 +182,62 @@ public class MemberController implements Initializable {
             showAlert("Error", "Please select a member", Alert.AlertType.WARNING);
             return;
         }
-        showAlert("History", "View history for " + selected.getName() + " not yet implemented", Alert.AlertType.INFORMATION);
+
+        // Build dialog with a TableView of transactions
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Borrow History");
+        dialog.setHeaderText("History for: " + selected.getName() + " (" + selected.getMemberId() + ")");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().setPrefSize(650, 400);
+
+        // Table setup
+        TableView<Transaction> historyTable = new TableView<>();
+        historyTable.setPlaceholder(new Label("No borrow history found"));
+
+        TableColumn<Transaction, String> recordCol = new TableColumn<>("Record ID");
+        recordCol.setCellValueFactory(new PropertyValueFactory<>("recordId"));
+        recordCol.setPrefWidth(100);
+
+        TableColumn<Transaction, String> bookCol = new TableColumn<>("Book ID");
+        bookCol.setCellValueFactory(new PropertyValueFactory<>("bookId"));
+        bookCol.setPrefWidth(100);
+
+        TableColumn<Transaction, String> borrowCol = new TableColumn<>("Borrow Date");
+        borrowCol.setCellValueFactory(new PropertyValueFactory<>("borrowDate"));
+        borrowCol.setPrefWidth(120);
+
+        TableColumn<Transaction, String> returnCol = new TableColumn<>("Return Date");
+        returnCol.setCellValueFactory(new PropertyValueFactory<>("returnDate"));
+        returnCol.setPrefWidth(120);
+
+        TableColumn<Transaction, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setPrefWidth(100);
+
+        historyTable.getColumns().addAll(recordCol, bookCol, borrowCol, returnCol, statusCol);
+
+        Label loadingLabel = new Label("Loading history...");
+        VBox content = new VBox(10, loadingLabel, historyTable);
+        content.setPadding(new Insets(10));
+        dialog.getDialogPane().setContent(content);
+
+        // Load history in background
+        var task = ApiClient.getInstance().getHistory(selected.getId());
+        task.setOnSucceeded(event -> {
+            List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
+            Platform.runLater(() -> {
+                loadingLabel.setText("Total records: " + transactions.size());
+                historyTable.setItems(FXCollections.observableArrayList(transactions));
+            });
+            logger.info("Loaded {} history records for member {}", transactions.size(), selected.getMemberId());
+        });
+        task.setOnFailed(event -> {
+            logger.error("Failed to load history", event.getSource().getException());
+            Platform.runLater(() -> loadingLabel.setText("Failed to load history: " + event.getSource().getException().getMessage()));
+        });
+        new Thread(task).start();
+
+        dialog.showAndWait();
     }
 
     @FXML

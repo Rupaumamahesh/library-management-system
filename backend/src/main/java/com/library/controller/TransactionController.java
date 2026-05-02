@@ -12,10 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
-/**
- * REST controller for transaction management (borrow/return).
- * Endpoint base: /api
- */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -32,17 +28,11 @@ public class TransactionController {
 
     @PostMapping("/return/{transactionId}")
     public ResponseEntity<TransactionDTO> returnBook(@PathVariable Long transactionId) {
-        // This endpoint needs transaction lookup - will be enhanced
-        return ResponseEntity.ok(new TransactionDTO());
+        return ResponseEntity.ok(transactionService.returnByTransactionId(transactionId));
     }
 
     @GetMapping("/transactions")
     public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
         return ResponseEntity.ok(transactionService.getAllTransactions());
-    }
-
-    @GetMapping("/members/{memberId}/history")
-    public ResponseEntity<List<TransactionDTO>> getMemberHistory(@PathVariable Long memberId) {
-        return ResponseEntity.ok(transactionService.getHistory(memberId));
     }
 }
