@@ -83,37 +83,37 @@ public class DashboardController implements Initializable {
 
     private void loadDashboardData() {
         // Load books count
-        ApiClient.getInstance().getBooks()
-                .setOnSucceeded(event -> {
-                    List<Book> books = (List<Book>) event.getSource().getValue();
-                    Platform.runLater(() -> totalBooksLabel.setText(String.valueOf(books.size())));
-                })
-                .setOnFailed(event -> logger.error("Failed to load books", event.getSource().getException()));
-        new Thread(ApiClient.getInstance().getBooks()).start();
+        var booksTask = ApiClient.getInstance().getBooks();
+        booksTask.setOnSucceeded(event -> {
+            List<Book> books = (List<Book>) event.getSource().getValue();
+            Platform.runLater(() -> totalBooksLabel.setText(String.valueOf(books.size())));
+        });
+        booksTask.setOnFailed(event -> logger.error("Failed to load books", event.getSource().getException()));
+        new Thread(booksTask).start();
 
         // Load members count
-        ApiClient.getInstance().getMembers()
-                .setOnSucceeded(event -> {
-                    List<Member> members = (List<Member>) event.getSource().getValue();
-                    Platform.runLater(() -> totalMembersLabel.setText(String.valueOf(members.size())));
-                })
-                .setOnFailed(event -> logger.error("Failed to load members", event.getSource().getException()));
-        new Thread(ApiClient.getInstance().getMembers()).start();
+        var membersTask = ApiClient.getInstance().getMembers();
+        membersTask.setOnSucceeded(event -> {
+            List<Member> members = (List<Member>) event.getSource().getValue();
+            Platform.runLater(() -> totalMembersLabel.setText(String.valueOf(members.size())));
+        });
+        membersTask.setOnFailed(event -> logger.error("Failed to load members", event.getSource().getException()));
+        new Thread(membersTask).start();
 
         // Load transactions (recent)
-        ApiClient.getInstance().getTransactions()
-                .setOnSucceeded(event -> {
-                    List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
-                    long activeBorrows = transactions.stream()
-                            .filter(t -> "BORROWED".equals(t.getStatus()))
-                            .count();
-                    Platform.runLater(() -> {
-                        activeBorrowsLabel.setText(String.valueOf(activeBorrows));
-                        recentTransactionsTable.getItems().addAll(transactions);
-                    });
-                })
-                .setOnFailed(event -> logger.error("Failed to load transactions", event.getSource().getException()));
-        new Thread(ApiClient.getInstance().getTransactions()).start();
+        var transactionsTask = ApiClient.getInstance().getTransactions();
+        transactionsTask.setOnSucceeded(event -> {
+            List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
+            long activeBorrows = transactions.stream()
+                    .filter(t -> "BORROWED".equals(t.getStatus()))
+                    .count();
+            Platform.runLater(() -> {
+                activeBorrowsLabel.setText(String.valueOf(activeBorrows));
+                recentTransactionsTable.getItems().addAll(transactions);
+            });
+        });
+        transactionsTask.setOnFailed(event -> logger.error("Failed to load transactions", event.getSource().getException()));
+        new Thread(transactionsTask).start();
     }
 
     @FXML

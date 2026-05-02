@@ -82,18 +82,18 @@ public class BookController implements Initializable {
     }
 
     private void loadBooks() {
-        ApiClient.getInstance().getBooks()
-                .setOnSucceeded(event -> {
-                    List<Book> books = (List<Book>) event.getSource().getValue();
-                    allBooks = FXCollections.observableArrayList(books);
-                    Platform.runLater(() -> booksTable.setItems(allBooks));
-                    logger.info("Loaded {} books", books.size());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to load books", event.getSource().getException());
-                    showAlert("Error", "Failed to load books", Alert.AlertType.ERROR);
-                });
-        new Thread(ApiClient.getInstance().getBooks()).start();
+        var task = ApiClient.getInstance().getBooks();
+        task.setOnSucceeded(event -> {
+            List<Book> books = (List<Book>) event.getSource().getValue();
+            allBooks = FXCollections.observableArrayList(books);
+            Platform.runLater(() -> booksTable.setItems(allBooks));
+            logger.info("Loaded {} books", books.size());
+        });
+        task.setOnFailed(event -> {
+            logger.error("Failed to load books", event.getSource().getException());
+            showAlert("Error", "Failed to load books", Alert.AlertType.ERROR);
+        });
+        new Thread(task).start();
     }
 
     @FXML
@@ -121,20 +121,20 @@ public class BookController implements Initializable {
             return;
         }
 
-        ApiClient.getInstance().deleteBook(selected.getId())
-                .setOnSucceeded(event -> {
-                    Platform.runLater(() -> {
-                        allBooks.remove(selected);
-                        booksTable.setItems(allBooks);
-                        showAlert("Success", "Book deleted successfully", Alert.AlertType.INFORMATION);
-                    });
-                    logger.info("Book deleted: {}", selected.getBookId());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to delete book", event.getSource().getException());
-                    showAlert("Error", "Failed to delete book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
-                });
-        new Thread(ApiClient.getInstance().deleteBook(selected.getId())).start();
+        var deleteTask = ApiClient.getInstance().deleteBook(selected.getId());
+        deleteTask.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                allBooks.remove(selected);
+                booksTable.setItems(allBooks);
+                showAlert("Success", "Book deleted successfully", Alert.AlertType.INFORMATION);
+            });
+            logger.info("Book deleted: {}", selected.getBookId());
+        });
+        deleteTask.setOnFailed(event -> {
+            logger.error("Failed to delete book", event.getSource().getException());
+            showAlert("Error", "Failed to delete book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+        });
+        new Thread(deleteTask).start();
     }
 
     @FXML

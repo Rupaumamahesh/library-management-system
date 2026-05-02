@@ -75,18 +75,18 @@ public class MemberController implements Initializable {
     }
 
     private void loadMembers() {
-        ApiClient.getInstance().getMembers()
-                .setOnSucceeded(event -> {
-                    List<Member> members = (List<Member>) event.getSource().getValue();
-                    ObservableList<Member> items = FXCollections.observableArrayList(members);
-                    Platform.runLater(() -> membersTable.setItems(items));
-                    logger.info("Loaded {} members", members.size());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to load members", event.getSource().getException());
-                    showAlert("Error", "Failed to load members", Alert.AlertType.ERROR);
-                });
-        new Thread(ApiClient.getInstance().getMembers()).start();
+        var task = ApiClient.getInstance().getMembers();
+        task.setOnSucceeded(event -> {
+            List<Member> members = (List<Member>) event.getSource().getValue();
+            ObservableList<Member> items = FXCollections.observableArrayList(members);
+            Platform.runLater(() -> membersTable.setItems(items));
+            logger.info("Loaded {} members", members.size());
+        });
+        task.setOnFailed(event -> {
+            logger.error("Failed to load members", event.getSource().getException());
+            showAlert("Error", "Failed to load members", Alert.AlertType.ERROR);
+        });
+        new Thread(task).start();
     }
 
     @FXML
@@ -112,19 +112,19 @@ public class MemberController implements Initializable {
             return;
         }
 
-        ApiClient.getInstance().deleteMember(selected.getId())
-                .setOnSucceeded(event -> {
-                    Platform.runLater(() -> {
-                        membersTable.getItems().remove(selected);
-                        showAlert("Success", "Member deleted successfully", Alert.AlertType.INFORMATION);
-                    });
-                    logger.info("Member deleted: {}", selected.getMemberId());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to delete member", event.getSource().getException());
-                    showAlert("Error", "Failed to delete member: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
-                });
-        new Thread(ApiClient.getInstance().deleteMember(selected.getId())).start();
+        var deleteTask = ApiClient.getInstance().deleteMember(selected.getId());
+        deleteTask.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                membersTable.getItems().remove(selected);
+                showAlert("Success", "Member deleted successfully", Alert.AlertType.INFORMATION);
+            });
+            logger.info("Member deleted: {}", selected.getMemberId());
+        });
+        deleteTask.setOnFailed(event -> {
+            logger.error("Failed to delete member", event.getSource().getException());
+            showAlert("Error", "Failed to delete member: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+        });
+        new Thread(deleteTask).start();
     }
 
     @FXML

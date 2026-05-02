@@ -89,18 +89,18 @@ public class TransactionController implements Initializable {
     }
 
     private void loadTransactions() {
-        ApiClient.getInstance().getTransactions()
-                .setOnSucceeded(event -> {
-                    List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
-                    ObservableList<Transaction> items = FXCollections.observableArrayList(transactions);
-                    Platform.runLater(() -> historyTable.setItems(items));
-                    logger.info("Loaded {} transactions", transactions.size());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to load transactions", event.getSource().getException());
-                    showAlert("Error", "Failed to load transactions", Alert.AlertType.ERROR);
-                });
-        new Thread(ApiClient.getInstance().getTransactions()).start();
+        var task = ApiClient.getInstance().getTransactions();
+        task.setOnSucceeded(event -> {
+            List<Transaction> transactions = (List<Transaction>) event.getSource().getValue();
+            ObservableList<Transaction> items = FXCollections.observableArrayList(transactions);
+            Platform.runLater(() -> historyTable.setItems(items));
+            logger.info("Loaded {} transactions", transactions.size());
+        });
+        task.setOnFailed(event -> {
+            logger.error("Failed to load transactions", event.getSource().getException());
+            showAlert("Error", "Failed to load transactions", Alert.AlertType.ERROR);
+        });
+        new Thread(task).start();
     }
 
     @FXML
@@ -115,26 +115,26 @@ public class TransactionController implements Initializable {
 
         borrowButton.setDisable(true);
 
-        ApiClient.getInstance().borrowBook(memberId, bookId)
-                .setOnSucceeded(event -> {
-                    Transaction transaction = (Transaction) event.getSource().getValue();
-                    Platform.runLater(() -> {
-                        showAlert("Success", "Book borrowed successfully", Alert.AlertType.INFORMATION);
-                        memberIdField.clear();
-                        bookIdField.clear();
-                        loadTransactions();
-                        borrowButton.setDisable(false);
-                    });
-                    logger.info("Book borrowed: {}", transaction.getRecordId());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to borrow book", event.getSource().getException());
-                    Platform.runLater(() -> {
-                        showAlert("Error", "Failed to borrow book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
-                        borrowButton.setDisable(false);
-                    });
-                });
-        new Thread(ApiClient.getInstance().borrowBook(memberId, bookId)).start();
+        var borrowTask = ApiClient.getInstance().borrowBook(memberId, bookId);
+        borrowTask.setOnSucceeded(event -> {
+            Transaction transaction = (Transaction) event.getSource().getValue();
+            Platform.runLater(() -> {
+                showAlert("Success", "Book borrowed successfully", Alert.AlertType.INFORMATION);
+                memberIdField.clear();
+                bookIdField.clear();
+                loadTransactions();
+                borrowButton.setDisable(false);
+            });
+            logger.info("Book borrowed: {}", transaction.getRecordId());
+        });
+        borrowTask.setOnFailed(event -> {
+            logger.error("Failed to borrow book", event.getSource().getException());
+            Platform.runLater(() -> {
+                showAlert("Error", "Failed to borrow book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+                borrowButton.setDisable(false);
+            });
+        });
+        new Thread(borrowTask).start();
     }
 
     @FXML
@@ -152,23 +152,23 @@ public class TransactionController implements Initializable {
 
         returnButton.setDisable(true);
 
-        ApiClient.getInstance().returnBook(selected.getId())
-                .setOnSucceeded(event -> {
-                    Platform.runLater(() -> {
-                        showAlert("Success", "Book returned successfully", Alert.AlertType.INFORMATION);
-                        loadTransactions();
-                        returnButton.setDisable(false);
-                    });
-                    logger.info("Book returned: {}", selected.getRecordId());
-                })
-                .setOnFailed(event -> {
-                    logger.error("Failed to return book", event.getSource().getException());
-                    Platform.runLater(() -> {
-                        showAlert("Error", "Failed to return book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
-                        returnButton.setDisable(false);
-                    });
-                });
-        new Thread(ApiClient.getInstance().returnBook(selected.getId())).start();
+        var returnTask = ApiClient.getInstance().returnBook(selected.getId());
+        returnTask.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                showAlert("Success", "Book returned successfully", Alert.AlertType.INFORMATION);
+                loadTransactions();
+                returnButton.setDisable(false);
+            });
+            logger.info("Book returned: {}", selected.getRecordId());
+        });
+        returnTask.setOnFailed(event -> {
+            logger.error("Failed to return book", event.getSource().getException());
+            Platform.runLater(() -> {
+                showAlert("Error", "Failed to return book: " + event.getSource().getException().getMessage(), Alert.AlertType.ERROR);
+                returnButton.setDisable(false);
+            });
+        });
+        new Thread(returnTask).start();
     }
 
     @FXML

@@ -60,28 +60,26 @@ public class LoginController implements Initializable {
         loginButton.setDisable(true);
         errorLabel.setText("");
 
-        // Call login on background thread
-        ApiClient.getInstance().login(username, password)
-                .setOnSucceeded(event -> {
-                    String token = (String) event.getSource().getValue();
-                    SessionManager.getInstance().setToken(token);
-                    logger.info("Login successful");
-                    try {
-                        MainApp.switchScene("/fxml/dashboard.fxml");
-                    } catch (IOException e) {
-                        showError("Failed to load dashboard: " + e.getMessage());
-                        loginButton.setDisable(false);
-                    }
-                })
-                .setOnFailed(event -> {
-                    Throwable exception = event.getSource().getException();
-                    logger.error("Login failed", exception);
-                    showError("Login failed: " + exception.getMessage());
-                    loginButton.setDisable(false);
-                });
-
-        // Execute task
-        new Thread(ApiClient.getInstance().login(username, password)).start();
+        // Create task once, set handlers, then start
+        var task = ApiClient.getInstance().login(username, password);
+        task.setOnSucceeded(event -> {
+            String token = (String) event.getSource().getValue();
+            SessionManager.getInstance().setToken(token);
+            logger.info("Login successful");
+            try {
+                MainApp.switchScene("/fxml/dashboard.fxml");
+            } catch (IOException e) {
+                showError("Failed to load dashboard: " + e.getMessage());
+                loginButton.setDisable(false);
+            }
+        });
+        task.setOnFailed(event -> {
+            Throwable exception = event.getSource().getException();
+            logger.error("Login failed", exception);
+            showError("Login failed: " + exception.getMessage());
+            loginButton.setDisable(false);
+        });
+        new Thread(task).start();
     }
 
     private void showError(String message) {
