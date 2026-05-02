@@ -9,4 +9,4 @@ CREATE TABLE users (
 
 -- Insert default admin user (password: admin123 hashed with BCrypt)
 INSERT INTO users (username, password_hash, role) VALUES 
-('admin', '$2a$10$slYQmyNdGzin7olVN3p5Be7DlH.PKZbv5H8KnzzVgXXbVxzy2QJOG', 'ADMIN');
+('admin', '$2b$10$hyWBa0eO7iZTHMfI9cLHvepneaGHXAM/xHdKPi2x7.Wu1C6H96a7i', 'ADMIN');
